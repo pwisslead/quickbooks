@@ -36,8 +36,8 @@ PROCEDURE SHIPSCREEN_LOAD
 ENDPROC
 
 FUNC BUILD_STATEMENT(TABLE_ALIAS)
-   ODBC_TABLE = CURVAL(TABLE_ALIAS, 'TABLE')
-   ODBC_IO = CURVAL(TABLE_ALIAS, 'IO')
+   ODBC_TABLE = CURVAL('TABLE',TABLE_ALIAS)
+   ODBC_IO = CURVAL('IO',TABLE_ALIAS)
    STATEMENT = "SELECT"
    
    STATEMENT = STATEMENT + ADD_ODBC_FIELD(TABLE_ALIAS, 'IO', 'INTERFACE_PROMPT', 1)
@@ -149,29 +149,34 @@ PROCEDURE SHIPSCREEN_INIT
    ENDIF
   
    TABLE_ALIAS = 'SETUPTBL' 
-   USE(SETUPFILE) IN 0 ALIAS ALIAS(TABLE_ALIAS) SHARED
+   USE(SETUPFILE) IN 0 ALIAS(TABLE_ALIAS) SHARED
    SELECT(TABLE_ALIAS)
    
-   IF CURVAL(TABLE_ALIAS, 'TYPE') != 1
+   *** ADDED 05/13/2016 SO THAT CURVAL FUNCTION WORKS
+   CURSORSETPROP("buffering",2,TABLE_ALIAS)
+   
+   IF CURVAL('TYPE',TABLE_ALIAS) != 1
       =MESSAGEBOX('Invalid interface setup file', 64, 'Invalid File')
       RETURN
    ENDIF
-      
+   
    *** STORE ODBC VARIABLE INFO HERE ***
-   ODBC_DATASOURCE = CURVAL(TABLE_ALIAS, 'DSN')
-   ODBC_LOGIN = CURVAL(TABLE_ALIAS, 'USER')
-   ODBC_PASSWORD = CURVAL(TABLE_ALIAS, 'PASS')
+   ODBC_DATASOURCE = CURVAL('DSN',TABLE_ALIAS)
+   ODBC_LOGIN = CURVAL('USER',TABLE_ALIAS)
+   ODBC_PASSWORD = CURVAL('PASS',TABLE_ALIAS)
    
    CUSTOM_ODBC_STATEMENT = BUILD_STATEMENT(TABLE_ALIAS)
    
-   USE IN SELECT(TABLE_ALIAS)
+   IF USED(TABLE_ALIAS)
+      USE IN SELECT(TABLE_ALIAS)
+   ENDIF
    
    DO ODBC_CONNECT IN INTERFACE
 ENDPROC
 
 FUNC ADD_ODBC_FIELD(TABLE_ALIAS, FIELD_NAME, SETUPASNAME, FIRSTFIELD)
    VALUE = CURVAL(FIELD_NAME, TABLE_ALIAS)
-   IF EMPTY(ALLTRIM(VALUE)
+   IF EMPTY(ALLTRIM(VALUE))
       RETURN ""
    ENDIF
    ADDSTR = " " + VALUE + " AS " + SETUPASNAME
@@ -336,6 +341,7 @@ FUNC POPULATE_ARRAYS(TABLE_NAME)
    XTRANSVAR(1,1) = GET_FIELD_VAL(TABLE_NAME, 'TRANSLATED_CARRIER_CODE') && TRANSLATED CARRIER CODE
    XTRANSVAR(1,2) = GET_FIELD_VAL(TABLE_NAME, 'TRANSLATED_COUNTRY_CODE') && TRANSLATED COUNTRY CODE
    
+   *** need to set to 0 if blank
    XWGTVAR(1,2) = GET_FIELD_VAL(TABLE_NAME, 'SHIP_WEIGHT') && SHIP WEIGHT
    
    XSHIPVAR(1,1) = GET_FIELD_VAL(TABLE_NAME, 'SHIPTO_CUSTOMER_NO') && SHIP TO CUSTOMER NUMBER
@@ -353,7 +359,9 @@ FUNC POPULATE_ARRAYS(TABLE_NAME)
    XSHIPVAR(1,13) = GET_FIELD_VAL(TABLE_NAME, 'SHIPTO_FAX_NO') && SHIP TO FAX NUMBER
    XSHIPVAR(1,14) = GET_FIELD_VAL(TABLE_NAME, 'SHIPTO_EMAIL') && SHIP TO EMAIL ADDRESS
    
+   *** need to set a default
    XBILLVAR(1,1) = GET_FIELD_VAL(TABLE_NAME, 'BILLING_METHOD') && BILLING METHOD   -   PREPAID / THIRD PARTY / COLLECT
+   
    XBILLVAR(1,2) = GET_FIELD_VAL(TABLE_NAME, 'BILLTO_CARRIER ACCT_NO') && BILL TO CARRIER ACCOUNT NUMBER
    XBILLVAR(1,3) = GET_FIELD_VAL(TABLE_NAME, 'BILLTO_COMPANY') && BILL TO COMPANY NAME
    XBILLVAR(1,4) = GET_FIELD_VAL(TABLE_NAME, 'BILLTO_ATTN') && BILL TO ATTENTION
@@ -369,6 +377,7 @@ FUNC POPULATE_ARRAYS(TABLE_NAME)
    XBILLVAR(1,14) = GET_FIELD_VAL(TABLE_NAME, 'BILLTO_FAX_NO') &&  BILL TO FAX NUMBER
    XBILLVAR(1,15) = GET_FIELD_VAL(TABLE_NAME, 'BILLTO_NO') && BILL TO NUMBER
    
+   *** don't populate if there is a blank value
    XRETVAR(1,1) = GET_FIELD_VAL(TABLE_NAME, 'RETURNLABEL_NAME') && RETURN LABEL NAME     
    XRETVAR(1,2) = GET_FIELD_VAL(TABLE_NAME, 'RETURNLABEL_ATTN') && RETURN LABEL ATTENTION
    XRETVAR(1,3) = GET_FIELD_VAL(TABLE_NAME, 'RETURNLABEL_ADDR1') && RETURN LABEL ADDRESS 1
@@ -382,6 +391,7 @@ FUNC POPULATE_ARRAYS(TABLE_NAME)
    XRETVAR(1,11) = GET_FIELD_VAL(TABLE_NAME, 'RETURNLABEL_ADDR_2') && RETURN LABEL ADDRESS 2
    XRETVAR(1,12) = GET_FIELD_VAL(TABLE_NAME, 'RETURNLABEL_ADDR_3') && RETURN LABEL ADDRESS 3
    
+   *** need to set to .F. if no value is specified
    XSPECVAR(1,3) = GET_FIELD_VAL(TABLE_NAME, 'COD') && C.O.D - .T. = COD / .F. = NO COD
    XSPECVAR(1,4) = GET_FIELD_VAL(TABLE_NAME, 'ADDTO_COD') && ADD SHIP CHARGES TO C.O.D
    XSPECVAR(1,5) = GET_FIELD_VAL(TABLE_NAME, 'COLLECT_COD') && COLLECT C.O.D FUNDS  - .T. = SECURE / .F. = UNSECURE
@@ -391,6 +401,7 @@ FUNC POPULATE_ARRAYS(TABLE_NAME)
    XSPECVAR(1,13) = GET_FIELD_VAL(TABLE_NAME, 'DIMENSIONAL') && DIMENSIONAL - .T. = DIMENSIONAL / .F. = IS NOT DIMENSIONAL
    XSPECVAR(1,15) = GET_FIELD_VAL(TABLE_NAME, 'RESIDENTIAL') && RESIDENTIAL - .T. = RESIDENTIAL / .F. = COMMERCIAL
    
+   *** default to 0 of leave alone if no value is specified
    XSPECCHG(1,2) = GET_FIELD_VAL(TABLE_NAME, 'COD_AMOUNT') && COD AMOUNT
    XSPECCHG(1,3) = GET_FIELD_VAL(TABLE_NAME, 'COD_CHARGE') && COD CHARGE
    XSPECCHG(1,4) = GET_FIELD_VAL(TABLE_NAME, 'INSURANCE_AMOUNT') && INSURANCE AMOUNT
@@ -401,10 +412,10 @@ FUNC POPULATE_ARRAYS(TABLE_NAME)
    XSPECCHG(1,9) = GET_FIELD_VAL(TABLE_NAME, 'DIMESIONAL_HEIGHT') && DIMESIONAL HEIGHT
    XSPECCHG(1,10) = GET_FIELD_VAL(TABLE_NAME, 'DIMENSIONAL_WEIGHT') && DIMENSIONAL WEIGHT
    
-   XMICSVAR(1,1) = GET_FIELD_VAL(TABLE_NAME, 'MISC1') && MISC1 - STORE ANY THING
-   XMICSVAR(1,2) = GET_FIELD_VAL(TABLE_NAME, 'MISC2') && MISC2 - STORE ANY THING
-   XMICSVAR(1,3) = GET_FIELD_VAL(TABLE_NAME, 'MISC3') && MISC3 - STORE ANY THING
-   XMICSVAR(1,4) = GET_FIELD_VAL(TABLE_NAME, 'MISC4') && MISC4 - STORE ANY THING
+   XMISCVAR(1,1) = GET_FIELD_VAL(TABLE_NAME, 'MISC1') && MISC1 - STORE ANY THING
+   XMISCVAR(1,2) = GET_FIELD_VAL(TABLE_NAME, 'MISC2') && MISC2 - STORE ANY THING
+   XMISCVAR(1,3) = GET_FIELD_VAL(TABLE_NAME, 'MISC3') && MISC3 - STORE ANY THING
+   XMISCVAR(1,4) = GET_FIELD_VAL(TABLE_NAME, 'MISC4') && MISC4 - STORE ANY THING
    
    XEDCVAR(1,17) = GET_FIELD_VAL(TABLE_NAME, 'RUBBER_STAMP1') && RUBBER STAMP 1 FIELD (ENDICIA LABEL ONLY)
    XEDCVAR(1,18) = GET_FIELD_VAL(TABLE_NAME, 'RUBBER_STAMP2') && RUBBER STAMP 2 FIELD (ENDICIA LABEL ONLY)
@@ -417,14 +428,18 @@ PROCEDURE IOPROMPT_LOSTFOCUS  && ONLY RUNS WHEN THE INTERFACE
    IF ODBC_CONNECT == .F.  && MAKE SURE CONNECT TO ODBC DATASOURCE
       RETURN
    ENDIF
-
-   ODBC_STATEMENT = CUSTOM_ODBC_STATEMENT + XIDVAR(1,1)
-  
+   
+   ODBC_STATEMENT = CUSTOM_ODBC_STATEMENT + "'"+ALLTRIM(XIDVAR(1,1))+"'"
+   
+   *=MESSAGEBOX(ODBC_STATEMENT)
+   
    TABLE_NAME = 'SQLRESULT' 
    DO ODBC_EXECUTE IN INTERFACE WITH ODBC_STATEMENT
    
+   BROWSE
+   
    IF RECCOUNT() == 0
-      =MESSAGEBOX('File Name is not found! Check File Name and Reprocess Package',16,'Information...')
+      =MESSAGEBOX('Interace # '+ALLTRIM(XIDVAR(1,1))+' is not found! Check Interace # and Reprocess Package',16,'ODBC Information...')
       STOP_SHIP = .T.
    ENDIF
    
@@ -432,7 +447,9 @@ PROCEDURE IOPROMPT_LOSTFOCUS  && ONLY RUNS WHEN THE INTERFACE
       POPULATE_ARRAYS(TABLE_NAME)
    ENDIF
    
-   USE IN SELECT(TABLE_NAME)
+   IF USED(TABLE_NAME)
+      USE IN SELECT(TABLE_NAME)
+   ENDIF
 ENDPROC
 
 PROCEDURE PKGID_GOTFOCUS
@@ -649,144 +666,144 @@ ENDPROC
 PROCEDURE BEFORE_PROCESS
    *** RETURN (PARCEL_SHIP_CONTINUE = .F.) IF YOU WANT TO STOP THE SHIPMENT FROM PROCESSING
    *** NEED TO CHECK FOR DUPLICATES
-   IF ! ISBLANK(ALLTRIM(ISCREEN_PASSWORD))
-      DO CASE
-         CASE ALLTRIM(XCARVAR(1,2)) == 'FEDEX'
-              IF FILE('FDXDAILY.DBF')
-                 USE FDXDAILY.DBF IN 0 SHARED
-                 SELECT FDXDAILY
-                 
-                 IF INTERFACE_ON = .T.
-                    SET ORDER TO IONUM
-                    SEEK ALLTRIM(XIDVAR(1,1,))
-                 ELSE
-                    SET ORDER TO PKGID
-                    SEEK ALLTRIM(XIDVAR(1,2))
-                 ENDIF
-                 
-                 IF FOUND()
-                    *** DUPLICATE RECORD FOUND SO DISPLAY PASSWORD MESSAGEBOX TO CONTINUE
-                    PUBLIC I_SCREEN_NAME,I_PROCEED
-                    STORE 'DUPLICATE FILE NAME' TO I_SCREEN_NAME
-                    STORE .T. TO I_PROCEED
-                    
-                    DO ENTER_PASSWORD IN NTIS_PASSWORD
-                    
-                    IF I_PROCEED = .T.
-                       STORE .T. TO PARCEL_SHIP_CONTINUE
-                    ELSE
-                       STORE .F. TO PARCEL_SHIP_CONTINUE
-                    ENDIF
-                    
-                    RELEASE I_SCREEN_NAME,I_PROCEED
-                 ENDIF
-                 
-                 IF USED('FDXDAILY')
-                    SELECT FDXDAILY
-                    USE IN FDXDAILY
-                 ENDIF
-              ENDIF
-         CASE ALLTRIM(XCARVAR(1,2)) == 'USPS'
-              IF FILE('USPDAILY.DBF')
-                 USE USPDAILY.DBF IN 0 SHARED
-                 SELECT USPDAILY
-                 
-                 IF INTERFACE_ON = .T.
-                    SET ORDER TO IONUM
-                    SEEK ALLTRIM(XIDVAR(1,1,))
-                 ELSE
-                    SET ORDER TO PKGID
-                    SEEK ALLTRIM(XIDVAR(1,2))
-                 ENDIF
-                 
-                 IF FOUND()
-                    *** DUPLICATE RECORD FOUND SO DISPLAY PASSWORD MESSAGEBOX TO CONTINUE
-                    PUBLIC I_SCREEN_NAME,I_PROCEED
-                    STORE 'DUPLICATE FILE NAME' TO I_SCREEN_NAME
-                    STORE .T. TO I_PROCEED
-                    
-                    DO ENTER_PASSWORD IN NTIS_PASSWORD
-                    
-                    IF I_PROCEED = .T.
-                       STORE .T. TO PARCEL_SHIP_CONTINUE
-                    ELSE
-                       STORE .F. TO PARCEL_SHIP_CONTINUE
-                    ENDIF
-                    
-                    RELEASE I_SCREEN_NAME,I_PROCEED
-                 ENDIF
-                 
-                 IF USED('USPDAILY')
-                    SELECT USPDAILY
-                    USE IN USPDAILY
-                 ENDIF
-              ENDIF
-         CASE ALLTRIM(XCARVAR(1,2)) == 'ENDICIA'
-              IF FILE('EDCDAILY.DBF')
-                 USE EDCDAILY.DBF IN 0 SHARED
-                 SELECT EDCDAILY
-                 
-                 IF INTERFACE_ON = .T.
-                    SET ORDER TO IONUM
-                    SEEK ALLTRIM(XIDVAR(1,1,))
-                 ELSE
-                    SET ORDER TO PKGID
-                    SEEK ALLTRIM(XIDVAR(1,2))
-                 ENDIF
-                 
-                 IF FOUND()
-                    *** DUPLICATE RECORD FOUND SO DISPLAY PASSWORD MESSAGEBOX TO CONTINUE
-                    PUBLIC I_SCREEN_NAME,I_PROCEED
-                    STORE 'DUPLICATE FILE NAME' TO I_SCREEN_NAME
-                    STORE .T. TO I_PROCEED
-                    
-                    DO ENTER_PASSWORD IN NTIS_PASSWORD
-                    
-                    IF I_PROCEED = .T.
-                       STORE .T. TO PARCEL_SHIP_CONTINUE
-                    ELSE
-                       STORE .F. TO PARCEL_SHIP_CONTINUE
-                    ENDIF
-                    
-                    RELEASE I_SCREEN_NAME,I_PROCEED
-                 ENDIF
-                 
-                 IF USED('EDCDAILY')
-                    SELECT EDCDAILY
-                    USE IN EDCDAILY
-                 ENDIF
-              ENDIF
-      ENDCASE
-   ENDIF
+*!*      IF ! ISBLANK(ALLTRIM(ISCREEN_PASSWORD))
+*!*         DO CASE
+*!*            CASE ALLTRIM(XCARVAR(1,2)) == 'FEDEX'
+*!*                 IF FILE('FDXDAILY.DBF')
+*!*                    USE FDXDAILY.DBF IN 0 SHARED
+*!*                    SELECT FDXDAILY
+*!*                    
+*!*                    IF INTERFACE_ON = .T.
+*!*                       SET ORDER TO IONUM
+*!*                       SEEK ALLTRIM(XIDVAR(1,1,))
+*!*                    ELSE
+*!*                       SET ORDER TO PKGID
+*!*                       SEEK ALLTRIM(XIDVAR(1,2))
+*!*                    ENDIF
+*!*                    
+*!*                    IF FOUND()
+*!*                       *** DUPLICATE RECORD FOUND SO DISPLAY PASSWORD MESSAGEBOX TO CONTINUE
+*!*                       PUBLIC I_SCREEN_NAME,I_PROCEED
+*!*                       STORE 'DUPLICATE FILE NAME' TO I_SCREEN_NAME
+*!*                       STORE .T. TO I_PROCEED
+*!*                       
+*!*                       DO ENTER_PASSWORD IN NTIS_PASSWORD
+*!*                       
+*!*                       IF I_PROCEED = .T.
+*!*                          STORE .T. TO PARCEL_SHIP_CONTINUE
+*!*                       ELSE
+*!*                          STORE .F. TO PARCEL_SHIP_CONTINUE
+*!*                       ENDIF
+*!*                       
+*!*                       RELEASE I_SCREEN_NAME,I_PROCEED
+*!*                    ENDIF
+*!*                    
+*!*                    IF USED('FDXDAILY')
+*!*                       SELECT FDXDAILY
+*!*                       USE IN FDXDAILY
+*!*                    ENDIF
+*!*                 ENDIF
+*!*            CASE ALLTRIM(XCARVAR(1,2)) == 'USPS'
+*!*                 IF FILE('USPDAILY.DBF')
+*!*                    USE USPDAILY.DBF IN 0 SHARED
+*!*                    SELECT USPDAILY
+*!*                    
+*!*                    IF INTERFACE_ON = .T.
+*!*                       SET ORDER TO IONUM
+*!*                       SEEK ALLTRIM(XIDVAR(1,1,))
+*!*                    ELSE
+*!*                       SET ORDER TO PKGID
+*!*                       SEEK ALLTRIM(XIDVAR(1,2))
+*!*                    ENDIF
+*!*                    
+*!*                    IF FOUND()
+*!*                       *** DUPLICATE RECORD FOUND SO DISPLAY PASSWORD MESSAGEBOX TO CONTINUE
+*!*                       PUBLIC I_SCREEN_NAME,I_PROCEED
+*!*                       STORE 'DUPLICATE FILE NAME' TO I_SCREEN_NAME
+*!*                       STORE .T. TO I_PROCEED
+*!*                       
+*!*                       DO ENTER_PASSWORD IN NTIS_PASSWORD
+*!*                       
+*!*                       IF I_PROCEED = .T.
+*!*                          STORE .T. TO PARCEL_SHIP_CONTINUE
+*!*                       ELSE
+*!*                          STORE .F. TO PARCEL_SHIP_CONTINUE
+*!*                       ENDIF
+*!*                       
+*!*                       RELEASE I_SCREEN_NAME,I_PROCEED
+*!*                    ENDIF
+*!*                    
+*!*                    IF USED('USPDAILY')
+*!*                       SELECT USPDAILY
+*!*                       USE IN USPDAILY
+*!*                    ENDIF
+*!*                 ENDIF
+*!*            CASE ALLTRIM(XCARVAR(1,2)) == 'ENDICIA'
+*!*                 IF FILE('EDCDAILY.DBF')
+*!*                    USE EDCDAILY.DBF IN 0 SHARED
+*!*                    SELECT EDCDAILY
+*!*                    
+*!*                    IF INTERFACE_ON = .T.
+*!*                       SET ORDER TO IONUM
+*!*                       SEEK ALLTRIM(XIDVAR(1,1,))
+*!*                    ELSE
+*!*                       SET ORDER TO PKGID
+*!*                       SEEK ALLTRIM(XIDVAR(1,2))
+*!*                    ENDIF
+*!*                    
+*!*                    IF FOUND()
+*!*                       *** DUPLICATE RECORD FOUND SO DISPLAY PASSWORD MESSAGEBOX TO CONTINUE
+*!*                       PUBLIC I_SCREEN_NAME,I_PROCEED
+*!*                       STORE 'DUPLICATE FILE NAME' TO I_SCREEN_NAME
+*!*                       STORE .T. TO I_PROCEED
+*!*                       
+*!*                       DO ENTER_PASSWORD IN NTIS_PASSWORD
+*!*                       
+*!*                       IF I_PROCEED = .T.
+*!*                          STORE .T. TO PARCEL_SHIP_CONTINUE
+*!*                       ELSE
+*!*                          STORE .F. TO PARCEL_SHIP_CONTINUE
+*!*                       ENDIF
+*!*                       
+*!*                       RELEASE I_SCREEN_NAME,I_PROCEED
+*!*                    ENDIF
+*!*                    
+*!*                    IF USED('EDCDAILY')
+*!*                       SELECT EDCDAILY
+*!*                       USE IN EDCDAILY
+*!*                    ENDIF
+*!*                 ENDIF
+*!*         ENDCASE
+*!*      ENDIF
 ENDPROC
 
 PROCEDURE AFTER_PROCESS
 ENDPROC
 
 PROCEDURE BEFORE_PARCEL_DATAWRITE
-   IF ODBC_CONNECT = .T.  && MAKE SURE CONNECT TO ODBC DATASOURCE
-      IF INTERFACE_ON  && MEANS THE INTERFACE HAS TO BE ON IN ORDER TO CHECK SHIP CODES
-         PRIVATE STRING_DATE
-         STORE DTOC(XDATEVAR(1,1))+' '+ALLTRIM(STR(HOUR(DATETIME())))+':'+ALLTRIM(STR(MINUTE(DATETIME())))+':'+ALLTRIM(STR(SEC(DATETIME())))+' '+ALLTRIM(RIGHT(TTOC(DATETIME()),2)) TO STRING_DATE
-         
-         PRIVATE ST1
-         STORE '' TO ST1
-         
-         ST1 = "INSERT INTO SNO_Shipping"
-         ST1 = ST1 + " (FileName,TrackingNumber,ShipDate,GrossCharge,TotalSurcharge,TotalDiscount,NetCharge,BilledWeight)"
-         ST1 = ST1 + " VALUES("
-          ST1 = ST1 + "'"+ALLTRIM(XIDVAR(1,1))+"','"+ALLTRIM(XNUMVAR(1,5))+"','"+STRING_DATE+"',"+ALLTRIM(STR(XTOTCHGVAR(1,6),8,2))+",0,0,"+ALLTRIM(STR(XTOTCHGVAR(1,6),8,2))+","+ALLTRIM(STR(XWGTVAR(1,2),8,2))+")"
+*!*      IF ODBC_CONNECT = .T.  && MAKE SURE CONNECT TO ODBC DATASOURCE
+*!*         IF INTERFACE_ON  && MEANS THE INTERFACE HAS TO BE ON IN ORDER TO CHECK SHIP CODES
+*!*            PRIVATE STRING_DATE
+*!*            STORE DTOC(XDATEVAR(1,1))+' '+ALLTRIM(STR(HOUR(DATETIME())))+':'+ALLTRIM(STR(MINUTE(DATETIME())))+':'+ALLTRIM(STR(SEC(DATETIME())))+' '+ALLTRIM(RIGHT(TTOC(DATETIME()),2)) TO STRING_DATE
+*!*            
+*!*            PRIVATE ST1
+*!*            STORE '' TO ST1
+*!*            
+*!*            ST1 = "INSERT INTO SNO_Shipping"
+*!*            ST1 = ST1 + " (FileName,TrackingNumber,ShipDate,GrossCharge,TotalSurcharge,TotalDiscount,NetCharge,BilledWeight)"
+*!*            ST1 = ST1 + " VALUES("
+*!*             ST1 = ST1 + "'"+ALLTRIM(XIDVAR(1,1))+"','"+ALLTRIM(XNUMVAR(1,5))+"','"+STRING_DATE+"',"+ALLTRIM(STR(XTOTCHGVAR(1,6),8,2))+",0,0,"+ALLTRIM(STR(XTOTCHGVAR(1,6),8,2))+","+ALLTRIM(STR(XWGTVAR(1,2),8,2))+")"
 
-         DO ODBC_EXECUTE IN INTERFACE WITH ST1
-         
-         IF USED('SQLRESULT')
-            SELECT SQLRESULT
-            USE IN SQLRESULT
-         ENDIF
-         
-         RELEASE STRING_DATE,ST1
-      ENDIF
-   ENDIF
+*!*            DO ODBC_EXECUTE IN INTERFACE WITH ST1
+*!*            
+*!*            IF USED('SQLRESULT')
+*!*               SELECT SQLRESULT
+*!*               USE IN SQLRESULT
+*!*            ENDIF
+*!*            
+*!*            RELEASE STRING_DATE,ST1
+*!*         ENDIF
+*!*      ENDIF
 ENDPROC
 PROCEDURE AFTER_PARCEL_DATAWRITE
 ENDPROC
@@ -820,43 +837,43 @@ ENDPROC
 
 PROCEDURE AFTER_VOID
    *** POPULATE (STOP_VOID WITH .T.) TO STOP VOID PROCESS
-   PRIVATE V_TRACKNUM,V_INTERFACE
-   STORE '' TO V_TRACKNUM
-   STORE .F. TO V_INTERFACE
-   
-   IF USED('FDXDAILY')
-      SELECT FDXDAILY
-      V_INTERFACE = FDXDAILY.INTERFACE
-      V_TRACKNUM = ALLTRIM(FDXDAILY.TRACKNUM)
-   ENDIF
-   IF USED('USPDAILY')
-      SELECT USPDAILY
-      V_INTERFACE = USPDAILY.INTERFACE
-      V_TRACKNUM = ALLTRIM(USPDAILY.TRACKNUM)
-   ENDIF
-   IF USED('EDCDAILY')
-      SELECT EDCDAILY
-      V_INTERFACE = EDCDAILY.INTERFACE
-      V_TRACKNUM = ALLTRIM(EDCDAILY.TRACKNUM)
-   ENDIF
-   
-   IF V_INTERFACE = .T.
-      PRIVATE ST1
-      STORE '' TO ST1
-      
-      ODBC_STATEMENT = "UPDATE SNO_Shipping SET VoidInd = 1 WHERE TrackingNumber = '"+ALLTRIM(V_TRACKNUM)+"'"
-      
-      DO ODBC_EXECUTE IN INTERFACE WITH ODBC_STATEMENT
-      
-      IF USED('SQLRESULT')
-         SELECT SQLRESULT
-         USE IN SQLRESULT
-      ENDIF
-      
-      RELEASE STRING_DATE,ST1
-   ENDIF
-   
-   RELEASE V_TRACKNUM,V_INTERFACE
+*!*      PRIVATE V_TRACKNUM,V_INTERFACE
+*!*      STORE '' TO V_TRACKNUM
+*!*      STORE .F. TO V_INTERFACE
+*!*      
+*!*      IF USED('FDXDAILY')
+*!*         SELECT FDXDAILY
+*!*         V_INTERFACE = FDXDAILY.INTERFACE
+*!*         V_TRACKNUM = ALLTRIM(FDXDAILY.TRACKNUM)
+*!*      ENDIF
+*!*      IF USED('USPDAILY')
+*!*         SELECT USPDAILY
+*!*         V_INTERFACE = USPDAILY.INTERFACE
+*!*         V_TRACKNUM = ALLTRIM(USPDAILY.TRACKNUM)
+*!*      ENDIF
+*!*      IF USED('EDCDAILY')
+*!*         SELECT EDCDAILY
+*!*         V_INTERFACE = EDCDAILY.INTERFACE
+*!*         V_TRACKNUM = ALLTRIM(EDCDAILY.TRACKNUM)
+*!*      ENDIF
+*!*      
+*!*      IF V_INTERFACE = .T.
+*!*         PRIVATE ST1
+*!*         STORE '' TO ST1
+*!*         
+*!*         ODBC_STATEMENT = "UPDATE SNO_Shipping SET VoidInd = 1 WHERE TrackingNumber = '"+ALLTRIM(V_TRACKNUM)+"'"
+*!*         
+*!*         DO ODBC_EXECUTE IN INTERFACE WITH ODBC_STATEMENT
+*!*         
+*!*         IF USED('SQLRESULT')
+*!*            SELECT SQLRESULT
+*!*            USE IN SQLRESULT
+*!*         ENDIF
+*!*         
+*!*         RELEASE STRING_DATE,ST1
+*!*      ENDIF
+*!*      
+*!*      RELEASE V_TRACKNUM,V_INTERFACE
 ENDPROC
 
 ***************************
