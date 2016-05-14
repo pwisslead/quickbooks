@@ -254,18 +254,17 @@ def main(args=None):
               ['RETCITY', 'RETURN CITY'],
               ['RETSTATE', 'RETURN STATE'],
               ['RETZIP', 'RETURN ZIPCODE'],
-              ['RETPHNO', 'RETURN PHONE #'],
+              ['RETPHNO', 'RETURN PHONE #']]
     wizard.addPage(MatchPage(fields))
 
     fields = [['DIMLENGTH', 'DIMENSIONAL LENGTH'],
               ['DIMWIDTH', 'DIMENSIONAL WIDTH'],
               ['DIMHEIGHT', 'DIMESIONAL HEIGHT'],
-              ['DIMWEIGHT', 'DIMENSIONAL WEIGHT'],
               ['RSDNTL', 'RESIDENTIAL'],
               ['SATDELIV', 'SATURDAY DELIVERY'],
               ['SATPICKUP', 'SATURDAY PICKUP'],
               ['CODAMNT', 'COD AMOUNT'],
-              ['INSURAMNT', 'INSURANCE AMOUNT'],
+              ['INSURAMNT', 'INSURANCE AMOUNT']]
     wizard.addPage(MatchPage(fields))
 
     fields = [['MISC1', 'MISC 1'],
