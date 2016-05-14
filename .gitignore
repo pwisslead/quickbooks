@@ -1,5 +1,8 @@
 dist/
 build/
+*.FXP
+*.ERR
 *.swp
 *.BAK
 *~
+*.spec
