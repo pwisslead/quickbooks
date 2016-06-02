@@ -1,8 +1,11 @@
+*.pyc
+*.pyw
 dist/
 build/
 *.FXP
 *.ERR
 *.swp
 *.BAK
+*.dbf
 *~
 *.spec
