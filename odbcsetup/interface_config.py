@@ -188,6 +188,10 @@ class ReturnTypePage(QtGui.QWizardPage):
         self.layout.addWidget(self.comboBox)
         self.setLayout(self.layout)
 
+    def validatePage(self):
+        self.wizard().return_type = self.comboBox.currentText()
+        return True
+
 def invalidPage():
     page = QtGui.QWizardPage()
     page.setTitle("This function has not been implemented")
@@ -199,12 +203,6 @@ class SaveODBCPage(QtGui.QWizardPage):
         QtGui.QWizardPage.__init__(self)
         self.setCommitPage(False)
         self.setTitle("Save Settings")
-        if setup_type == 'Retrieve':
-            self.tablename = 'InterfaceSetup'
-        elif setup_type == 'Return':
-            self.tablename = 'InterfaceReturnSetup'
-        else:
-            raise TypeError('Bad setup type')
 
     def nextId(self):
         return -1
@@ -215,10 +213,15 @@ class SaveODBCPage(QtGui.QWizardPage):
         fields = matchers.keys()
         for key in fields:
             setupstr += ';%s C(%d)' % (key, max(len(matchers[key].currentText()), 1))
-        setupstr = ('type N(3, 0); dsn C(%d); user C(1); pass C(1); table C(%d)' % (len(self.wizard().dsn), len(self.wizard().table))) + setupstr
-        table = dbf.Table(self.tablename, setupstr)
+	return_type = getattr(self.wizard(), 'return_type', ' ')
+	if return_type.strip():
+            tablename = 'InterfaceReturnSetup'
+        else:
+            tablename = 'InterfaceSetup'
+        setupstr = ('type N(3, 0); dsn C(%d); user C(1); pass C(1); table C(%d); rettype C(%d)' % (len(self.wizard().dsn), len(self.wizard().table), len(return_type))) + setupstr
+        table = dbf.Table(tablename, setupstr)
         table.open()
-        datum = tuple([1, self.wizard().dsn, '', '', self.wizard().table] + [matchers[key].currentText() for key in fields])
+        datum = tuple([1, self.wizard().dsn, '', '', self.wizard().table, return_type] + [matchers[key].currentText() for key in fields])
         table.append(datum)
         table.close()
         return True
