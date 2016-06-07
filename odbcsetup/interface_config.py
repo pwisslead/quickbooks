@@ -5,26 +5,38 @@ from PySide import QtGui
 import pyodbc
 import dbf
 
+def get_page_id(wizard, page):
+    for page_id in wizard.pageIds():
+        if wizard.page(page_id) is page:
+            return page_id
+
 class IntroPage(QtGui.QWizardPage):
     def __init__(self):
         QtGui.QWizardPage.__init__(self)
-        self.setTitle("ODBC Setup")
+        self.setTitle("External Data Source Setup")
 
         label = QtGui.QLabel("Select the interface type")
         label.setWordWrap(True)
 
         self.comboBox = QtGui.QComboBox()
-        self.comboBox.addItems(['ODBC', 'FTP', 'Test'])
+        self.comboBox.addItems(['ODBC', 'FTP'])
+
+        self.comboBox2 = QtGui.QComboBox()
+        self.comboBox2.addItems(['Retrieve Data', 'Return Data'])
 
         self.layout = QtGui.QVBoxLayout()
         self.layout.addWidget(label)
         self.layout.addWidget(self.comboBox)
+        self.layout.addWidget(self.comboBox2)
         self.setLayout(self.layout)
 
     def nextId(self):
         if self.comboBox.currentText() == 'ODBC':
-            return 1
-        return 5
+            if self.comboBox2.currentText() == 'Retrieve Data':
+                return get_page_id(self.wizard(), self.wizard().odbc_retrieve)
+            if self.comboBox2.currentText() == 'Return Data':
+                return get_page_id(self.wizard(), self.wizard().odbc_return)
+        return get_page_id(self.wizard(), self.wizard().invalid_page)
 
 class SourcePage(QtGui.QWizardPage):
     def __init__(self):
@@ -162,14 +174,32 @@ class MatchPage(QtGui.QWizardPage):
             self.matchers[key].box.addItems([''])
             self.matchers[key].box.addItems(self.wizard().fields)
 
+class ReturnTypePage(QtGui.QWizardPage):
+    def __init__(self):
+        QtGui.QWizardPage.__init__(self)
+        self.setTitle("Select Return Type")
+        label = QtGui.QLabel("Select Return Type")
+
+        self.comboBox = QtGui.QComboBox()
+        self.comboBox.addItems(['Insert', 'Update'])
+
+        self.layout = QtGui.QVBoxLayout()
+        self.layout.addWidget(label)
+        self.layout.addWidget(self.comboBox)
+        self.setLayout(self.layout)
+
+    def validatePage(self):
+        self.wizard().return_type = self.comboBox.currentText()
+        return True
+
 def invalidPage():
     page = QtGui.QWizardPage()
     page.setTitle("This function has not been implemented")
     page.isFinalPage = lambda: True
     return page
 
-class LastPage(QtGui.QWizardPage):
-    def __init__(self):
+class SaveODBCPage(QtGui.QWizardPage):
+    def __init__(self, setup_type):
         QtGui.QWizardPage.__init__(self)
         self.setCommitPage(False)
         self.setTitle("Save Settings")
@@ -183,11 +213,15 @@ class LastPage(QtGui.QWizardPage):
         fields = matchers.keys()
         for key in fields:
             setupstr += ';%s C(%d)' % (key, max(len(matchers[key].currentText()), 1))
-        setupstr = ('type N(3, 0); dsn C(%d); user C(1); pass C(1); table C(%d)' % (len(self.wizard().dsn), len(self.wizard().table))) + setupstr
-        print(setupstr)
-        table = dbf.Table('InterfaceSetup', setupstr)
+	return_type = getattr(self.wizard(), 'return_type', ' ')
+	if return_type.strip():
+            tablename = 'InterfaceReturnSetup'
+        else:
+            tablename = 'InterfaceSetup'
+        setupstr = ('type N(3, 0); dsn C(%d); user C(1); pass C(1); table C(%d); rettype C(%d)' % (len(self.wizard().dsn), len(self.wizard().table), len(return_type))) + setupstr
+        table = dbf.Table(tablename, setupstr)
         table.open()
-        datum = tuple([1, self.wizard().dsn, '', '', self.wizard().table] + [matchers[key].currentText() for key in fields])
+        datum = tuple([1, self.wizard().dsn, '', '', self.wizard().table, return_type] + [matchers[key].currentText() for key in fields])
         table.append(datum)
         table.close()
         return True
@@ -199,7 +233,9 @@ def main(args=None):
 
     wizard = QtGui.QWizard()
     wizard.addPage(IntroPage())
-    wizard.addPage(SourcePage())
+
+    wizard.odbc_retrieve = SourcePage()
+    wizard.addPage(wizard.odbc_retrieve)
     wizard.addPage(TablesPage())
     wizard.addPage(FieldsPage())
 
@@ -275,9 +311,25 @@ def main(args=None):
               ['RBRSTMP2', 'RUBBER STAMP 2'],
               ['RBRSTMP3', 'RUBBER STAMP 3']]
     wizard.addPage(MatchPage(fields))
+    wizard.addPage(SaveODBCPage('Retrieve'))
 
-    wizard.addPage(LastPage())
-    wizard.addPage(invalidPage())
+    wizard.odbc_return = ReturnTypePage()
+    wizard.addPage(wizard.odbc_return)
+    wizard.addPage(SourcePage())
+    wizard.addPage(TablesPage())
+    wizard.addPage(FieldsPage())
+    fields = [
+              ['IO', 'INTERFACE PROMPT'],
+              ['TRACKNUM', 'TRACKING NUMBER'],
+              ['SERVCHRG', 'SERVICE CHARGE'],
+              ['PUBCHRG', 'PUBLISHED CHARGE'],
+              ['DISCCHRG', 'DISCOUNT CHARGE'],
+             ]
+    wizard.addPage(MatchPage(fields))
+    wizard.addPage(SaveODBCPage('Return'))
+
+    wizard.invalid_page = invalidPage()
+    wizard.addPage(wizard.invalid_page)
 
     wizard.setWindowTitle("Interface Setup Wizard")
     wizard.show()
