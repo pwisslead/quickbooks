@@ -320,10 +320,15 @@ def main(args=None):
     wizard.addPage(FieldsPage())
     fields = [
               ['IO', 'INTERFACE PROMPT'],
+              ['PACKID', 'PACKAGE ID'],
               ['TRACKNUM', 'TRACKING NUMBER'],
-              ['SERVCHRG', 'SERVICE CHARGE'],
-              ['PUBCHRG', 'PUBLISHED CHARGE'],
-              ['DISCCHRG', 'DISCOUNT CHARGE'],
+              ['SERVCHRG', 'SERVICE CHARGES'],
+              ['DISFRTCHRG', 'DISCOUNT FREIGHT CHARGES'],
+              ['DISTOTCHRG', 'DISCOUNT TOTAL CHARGES'],
+              ['PUBFRTCHRG', 'PUBLISHED FREIGHT CHARGES'],
+              ['PUBTOTCHRG', 'PUBLISHED TOTAL CHARGES'],
+              ['BILLWGT', 'BILLABLE WEIGHT'],
+              ['SHIPWGT', 'SHIP WEIGHT'],
              ]
     wizard.addPage(MatchPage(fields))
     wizard.addPage(SaveODBCPage('Return'))
